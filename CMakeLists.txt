@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(ArchitectureAndDesignPatterns_HW1)
+project(ArchitectureAndDesignPatterns_HW2_SOLIDAndExceptions)
 
 # GoogleTest requires at least C++14
 set(CMAKE_CXX_STANDARD 17)
@@ -19,7 +19,11 @@ enable_testing()
 
 add_executable(
   SOLIDAndExceptions
-  SOLIDAndExceptions.cpp
+
+  source/SOLIDAndExceptions.hpp
+  source/SOLIDAndExceptions.cpp
+
+  source/test_SOLIDAndExceptions.cpp
 )
 target_link_libraries(
   SOLIDAndExceptions
