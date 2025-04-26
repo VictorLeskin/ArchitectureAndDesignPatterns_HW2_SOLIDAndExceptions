@@ -1,5 +1,5 @@
 ///************************* ITELMA SP ****************************************
 
-#include "solidandexceptions.hpp"
+#include "SOLIDAndExceptions.hpp"
 
 

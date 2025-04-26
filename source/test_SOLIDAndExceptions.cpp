@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "solidandexceptions.hpp"
+#include "SOLIDAndExceptions.hpp"
 
 // clang-format off
 
