@@ -27,26 +27,35 @@ public:
 	cCommandsDeque() {}
 
 	bool empty() const { return commands.empty();  }
-	iCommand &pop_front();
-	void push_back();
+	iCommand& pop_front()
+	{
+		iCommand *ret = commands.front();
+		commands.pop_front();
+		return *ret;
+	}
+	void push_back(iCommand* command)
+	{
+		commands.push_back(command);
+	}
 
 protected:	
-	std::deque<std::unique_ptr<iCommand*> > commands;
+	std::deque<iCommand*> commands;
 
 };
 
-class cWriteToLogger : public iCommand // interface class of command
+class cWriteToLogger : public iCommand
 {
 public:
-	cWriteToLogger(iLogger* l) : logger(l) {}
+	cWriteToLogger(iLogger &l, iCommand& c, std::exception& e) : logger(&l), command(&c), exc(&e) {}
 
-	virtual void Execute() { logger->WriteEvent( ) }
+	virtual void Execute() { logger->WriteEvent( *command, *exc ); }
 	virtual const char* Type() { return "Logger"; };
 
 protected:
 	iLogger* logger;
+	iCommand *command;
+	std::exception *exc;
 };
-
 
 
 class cRepeatCommand : public iCommand // interface class of command
@@ -81,7 +90,7 @@ public:
 		logger->WriteEvent(command, e);
 	}
 
-	void Register(const char *commandType, const char *exceptionType, void (*)(iCommand &,std::exception &)) {}
+	void Register(const char* commandType, const char* exceptionType, void (cExceptionsHandler::*)(iCommand&, std::exception&));
 
 	void setLogger(iLogger* l) { logger = l; }
 
@@ -95,7 +104,20 @@ class SOLIDAndExceptions
 public:
     void executeCommands();
 
+	//handler.Register(const char* commandType, const char* exceptionType, void (*)(iCommand&, std::exception&)) {}
+	void Register(const char* commandType, const char* exceptionType, void (cExceptionsHandler::* action)(iCommand&, std::exception&))
+	{
+		handler.Register(commandType, exceptionType, action);
+	}
+
+	void push_back(iCommand* command)
+	{
+		commands.push_back(command);
+	}
+
+
 protected:
+	cExceptionsHandler handler;
 	cCommandsDeque commands;
 
 };

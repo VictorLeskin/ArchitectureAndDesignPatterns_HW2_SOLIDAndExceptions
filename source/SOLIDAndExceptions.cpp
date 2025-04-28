@@ -5,9 +5,6 @@
 
 void SOLIDAndExceptions::executeCommands()
 {
-    cExceptionsHandler handler(commands);
-    //handler.Register(const char* commandType, const char* exceptionType, void (*)(iCommand&, std::exception&)) {}
-
     bool stop = false;
     while (!stop)
     {
