@@ -5,10 +5,11 @@
 
 void SOLIDAndExceptions::run()
 {
-    bool stop = false;
     cExceptionsHandler handler(commands);
+    handler.Register(const char* commandType, const char* exceptionType, void (*)(iCommand&, std::exception&)) {}
 
-    while (!stop) 
+    bool stop = false;
+    while (!stop)
     {
         iCommand* cmd = commands.front();
         commands.pop_front();
