@@ -40,9 +40,9 @@ public:
 
 protected:	
 	std::deque<iCommand*> commands;
-
 };
 
+// commands 
 class cWriteToLogger : public iCommand
 {
 public:
@@ -56,7 +56,6 @@ protected:
 	iCommand *command;
 	std::exception *exc;
 };
-
 
 class cRepeatCommand : public iCommand // interface class of command
 {
@@ -76,7 +75,7 @@ protected:
 class cExceptionsHandler
 {
 public:
-	cExceptionsHandler(std::deque<iCommand*>& c) : commandsDeque(&c), logger(nullptr) {}
+	cExceptionsHandler() {}
 	
 	iCommand& Handle(iCommand& command, std::exception& e);
 
@@ -92,17 +91,18 @@ public:
 
 	void Register(const char* commandType, const char* exceptionType, void (cExceptionsHandler::*)(iCommand&, std::exception&));
 
+	void setDeque(std::deque<iCommand*>& c) { commandsDeque = &c; }
 	void setLogger(iLogger* l) { logger = l; }
 
 protected:
-	std::deque<iCommand*> *commandsDeque;
+	std::deque<iCommand*> *commandsDeque = nullptr;
 	iLogger* logger = nullptr;
 };
 
 class SOLIDAndExceptions
 {
 public:
-    void executeCommands();
+    void run();
 
 	//handler.Register(const char* commandType, const char* exceptionType, void (*)(iCommand&, std::exception&)) {}
 	void Register(const char* commandType, const char* exceptionType, void (cExceptionsHandler::* action)(iCommand&, std::exception&))

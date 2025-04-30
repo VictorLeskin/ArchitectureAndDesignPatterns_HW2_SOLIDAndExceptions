@@ -3,7 +3,7 @@
 #include "SOLIDAndExceptions.hpp"
 #include <cassert>
 
-void SOLIDAndExceptions::executeCommands()
+void SOLIDAndExceptions::run()
 {
     bool stop = false;
     while (!stop)

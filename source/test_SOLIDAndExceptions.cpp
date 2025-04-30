@@ -20,8 +20,10 @@ public:
 
 };
  
-TEST_F(test_SOLIDAndExceptions, test_ctor )
+TEST_F(test_SOLIDAndExceptions, test_run )
 {
   Test_SOLIDAndExceptions t;
+
+  t.Register( "Logger", "Loggin failure", )
 }
 
