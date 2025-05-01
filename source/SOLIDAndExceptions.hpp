@@ -5,6 +5,9 @@
 #include <deque>
 #include <string>
 #include <memory>
+#include <optional>
+#include <cassert>
+#include <map>
 
 class iCommand // interface class of command
 {
@@ -43,10 +46,11 @@ protected:
 };
 
 // commands 
-class cWriteToLogger : public iCommand
+class cCommandWriteToLogger : public iCommand
 {
 public:
-	cWriteToLogger(iLogger &l, iCommand& c, std::exception& e) : logger(&l), command(&c), exc(&e) {}
+	cCommandWriteToLogger(iLogger &l, iCommand& c, std::exception& e) 
+		: logger(&l), command(&c), exc(&e) {}
 
 	virtual void Execute() { logger->WriteEvent( *command, *exc ); }
 	virtual const char* Type() { return "Logger"; };
@@ -60,43 +64,55 @@ protected:
 class cRepeatCommand : public iCommand // interface class of command
 {
 public:
-	cRepeatCommand(iCommand& c) : command(&c) 
+	cRepeatCommand()
 	{
 	}
 
-	virtual void Execute() { command->Execute(); }
+	virtual void Execute();
 	virtual const char* Type() { return "Repeater"; };
-
-protected:
-	iCommand* command;
 };
 
 
 class cExceptionsHandler
 {
 public:
+	using exceptionProcessor = void (*)(iCommand&, std::exception&);
+
+protected:
+	using key = std::tuple<std::string,std::string>; // command, exception
+
+public:
 	cExceptionsHandler() {}
 	
-	iCommand& Handle(iCommand& command, std::exception& e);
+	static iCommand& Handle(iCommand& command, std::exception& e);
 
-	void repeatCommand(iCommand& command, std::exception&)
+	static void defaultProcessor(iCommand&, std::exception&)
+	{
+		assert(0);
+	}
+
+	static void repeatCommand(iCommand& command, std::exception&)
 	{
 		commandsDeque->push_back(&command);
 	}
 
-	void writeToLogger(iCommand& command, std::exception &e)
+	static void writeToLogger(iCommand& command, std::exception &e)
 	{
 		logger->WriteEvent(command, e);
 	}
 
-	void Register(const char* commandType, const char* exceptionType, void (cExceptionsHandler::*)(iCommand&, std::exception&));
+	void Register(const char* commandType, const char* exceptionType, void (*procesor)(iCommand&, std::exception&));
+	std::optional< exceptionProcessor > get(const char* commandType, const char* exceptionType);
 
-	void setDeque(std::deque<iCommand*>& c) { commandsDeque = &c; }
-	void setLogger(iLogger* l) { logger = l; }
-
+	static void setDeque(std::deque<iCommand*>& c) { commandsDeque = &c; }
+	static void setLogger(iLogger* l) { logger = l; }
+	 
 protected:
-	std::deque<iCommand*> *commandsDeque = nullptr;
-	iLogger* logger = nullptr;
+	static std::deque<iCommand*> *commandsDeque;
+	static iLogger* logger;
+
+	std::map<key, exceptionProcessor> exceptionActions;
+
 };
 
 class SOLIDAndExceptions
@@ -104,17 +120,10 @@ class SOLIDAndExceptions
 public:
     void run();
 
-	//handler.Register(const char* commandType, const char* exceptionType, void (*)(iCommand&, std::exception&)) {}
-	void Register(const char* commandType, const char* exceptionType, void (cExceptionsHandler::* action)(iCommand&, std::exception&))
-	{
-		handler.Register(commandType, exceptionType, action);
-	}
-
 	void push_back(iCommand* command)
 	{
 		commands.push_back(command);
 	}
-
 
 protected:
 	cExceptionsHandler handler;
