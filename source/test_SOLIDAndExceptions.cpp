@@ -7,6 +7,29 @@
 // clang-format off
 
 // gTest grouping class
+class test_iLogger : public ::testing::Test
+{
+public:
+    // additional class to access to member of tested class
+    class Test_iLogger : public iLogger
+    {
+    public:
+        // add here members for free access.
+        using iLogger::iLogger; // delegate constructors
+        std::ostringstream strm;
+
+        void WriteEvent(iCommand& command, std::exception& exc) override
+        {
+            strm << "Command: " 
+                 << "'" << command.Type() << "'" 
+                << " Exception: "
+                << "'" << exc.what() << "'" << std::endl;
+        }
+    };
+
+};
+
+// gTest grouping class
 class test_SOLIDAndExceptions : public ::testing::Test
 {
 public:
@@ -35,12 +58,25 @@ public:
         // add here members for free access.
         using cExceptionsHandler::cExceptionsHandler; // delegate constructors
 
-        static void process(iCommand& command, std::exception& e)
+        static void process(cExceptionsHandler &h, std::unique_ptr<iCommand>& command, std::exception& e)
         {
         }
     };
 
 };
+
+class cTestCommand1 : public iCommand
+{
+public:
+
+    virtual void Execute() override
+    {
+        throw(std::exception("Execute of cTestCommand1 throw this"));
+    }
+
+    virtual const char* Type() override { return "cTestCommand1"; }
+};
+
 
 TEST_F(test_cExceptionsHandler, test_Register )
 {
@@ -72,6 +108,7 @@ TEST_F(test_cExceptionsHandler, test_get)
     EXPECT_FALSE(t.get("command", "Exception"));
 }
 
+
  
 TEST_F(test_SOLIDAndExceptions, test_run )
 {
@@ -81,4 +118,50 @@ TEST_F(test_SOLIDAndExceptions, test_run )
 
   //t.Register( "Logger", "Loggin failure", )
 }
+
+TEST_F(test_SOLIDAndExceptions, test_runCommandWriteToLogger)
+{
+    Test_SOLIDAndExceptions t;
+    test_iLogger::Test_iLogger t3;
+
+    cExceptionsHandler h;
+    h.setLogger(t3);
+    h.setCommandsDeque(t.getCommandsDeque());
+
+    h.Register("cTestCommand1", "Execute of cTestCommand1 throw this", cExceptionsHandler::addCommandWriteToLogger );
+
+    t.set(&h);
+   
+    std::unique_ptr<iCommand> t1( new cTestCommand1 );
+
+    t.push_back(t1);
+
+    t.run();
+
+    EXPECT_EQ("Command: 'cTestCommand1' Exception: 'Execute of cTestCommand1 throw this'\n", t3.strm.str());
+}
+
+TEST_F(test_SOLIDAndExceptions, test_runRepeatCommand)
+{
+    Test_SOLIDAndExceptions t;
+    test_iLogger::Test_iLogger t3;
+
+    cExceptionsHandler h;
+    h.setLogger(t3);
+    h.setCommandsDeque(t.getCommandsDeque());
+
+    h.Register("cTestCommand1", "Execute of cTestCommand1 throw this", cExceptionsHandler::repeatCommand);
+
+    t.set(&h);
+
+    std::unique_ptr<iCommand> t1(new cTestCommand1);
+
+    t.push_back(t1);
+
+    t.run();
+
+    EXPECT_EQ("Command: 'cTestCommand1' Exception: 'Execute of cTestCommand1 throw this'\n", t3.strm.str());
+}
+
+
 

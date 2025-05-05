@@ -18,65 +18,73 @@ public:
 	virtual const char* Type() = 0;
 };
 
-class iLogger // interface class of logger
-{
-public:
-	virtual void WriteEvent(iCommand& command, std::exception &exc) = 0;
-};
-
 class cCommandsDeque
 {
 public:
 	cCommandsDeque() {}
 
-	bool empty() const { return commands.empty();  }
-	iCommand& pop_front()
+	bool empty() const { return commands.empty(); }
+	std::unique_ptr< iCommand> pop_front()
 	{
-		iCommand *ret = commands.front();
+		std::unique_ptr< iCommand> ret = std::move(commands.front());
 		commands.pop_front();
-		return *ret;
+		return ret;
 	}
-	void push_back(iCommand* command)
+	void push_back(std::unique_ptr < iCommand > &command)
 	{
-		commands.push_back(command);
+		commands.push_back( std::move(command) );
 	}
 
 protected:	
-	std::deque<iCommand*> commands;
+	std::deque< std::unique_ptr<iCommand> > commands;
+};
+
+class iLogger // interface class of logger
+{
+public:
+	virtual void WriteEvent(iCommand& command, std::exception& exc) = 0;
 };
 
 // commands 
 class cCommandWriteToLogger : public iCommand
 {
 public:
-	cCommandWriteToLogger(iLogger &l, iCommand& c, std::exception& e) 
-		: logger(&l), command(&c), exc(&e) {}
+	cCommandWriteToLogger(iLogger &l, std::unique_ptr< iCommand>& c, std::exception& e)
+		: logger(&l), command( std::move(c) ), exc(e) {}
 
-	virtual void Execute() { logger->WriteEvent( *command, *exc ); }
+	virtual void Execute() { logger->WriteEvent( *command, exc ); }
 	virtual const char* Type() { return "Logger"; };
 
 protected:
 	iLogger* logger;
-	iCommand *command;
-	std::exception *exc;
+	std::unique_ptr< iCommand> command;
+	std::exception exc;
 };
 
 class cRepeatCommand : public iCommand // interface class of command
 {
 public:
-	cRepeatCommand()
+	cRepeatCommand(std::unique_ptr<iCommand>& c) 
+		: command(std::move(c))
+		, name( std::string("Repeator of ") + command->Type() )
 	{
 	}
 
-	virtual void Execute();
-	virtual const char* Type() { return "Repeater"; };
-};
+	virtual void Execute() { ++executionCount; command->Execute(); }
+	virtual const char* Type() { return name.c_str(); };
+	int ExecutionCount() const { return executionCount; }
 
+protected:		
+	int executionCount = 0;
+	std::unique_ptr<iCommand> command;
+	std::string name;
+
+};
 
 class cExceptionsHandler
 {
 public:
-	using exceptionProcessor = void (*)(iCommand&, std::exception&);
+	using exceptionProcessor = void (*)(cExceptionsHandler&, std::unique_ptr< iCommand>&, std::exception&);
 
 protected:
 	using key = std::tuple<std::string,std::string>; // command, exception
@@ -84,35 +92,45 @@ protected:
 public:
 	cExceptionsHandler() {}
 	
-	static iCommand& Handle(iCommand& command, std::exception& e);
+	cExceptionsHandler::exceptionProcessor Handle(std::unique_ptr< iCommand>& command, std::exception& e);
 
-	static void defaultProcessor(iCommand&, std::exception&)
+	static void writeToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception &e)
 	{
-		assert(0);
+		handler.logger->WriteEvent(*command, e);
 	}
 
-	static void repeatCommand(iCommand& command, std::exception&)
+	static void	addCommandWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e)
 	{
-		commandsDeque->push_back(&command);
+		std::unique_ptr<iCommand> r(new cCommandWriteToLogger(*handler.logger, command, e));
+		handler.commandsDeque->push_back( r );
 	}
 
-	static void writeToLogger(iCommand& command, std::exception &e)
+	static void	repeatCommand(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e)
 	{
-		logger->WriteEvent(command, e);
+		std::unique_ptr<iCommand> r(new cRepeatCommand(command));
+		handler.commandsDeque->push_back(r);
 	}
 
-	void Register(const char* commandType, const char* exceptionType, void (*procesor)(iCommand&, std::exception&));
+	static void	repeatAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e)
+	{
+		repeatCommand(handler, command, e);
+		addCommandWriteToLogger(handler, command, e);
+	}
+
+	static void	repeatTwiceAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e);
+
+
+	void Register(const char* commandType, const char* exceptionType, exceptionProcessor procesor);
 	std::optional< exceptionProcessor > get(const char* commandType, const char* exceptionType);
 
-	static void setDeque(std::deque<iCommand*>& c) { commandsDeque = &c; }
-	static void setLogger(iLogger* l) { logger = l; }
-	 
+	void setLogger(iLogger &l) { logger = &l; }
+	void setCommandsDeque(cCommandsDeque& c) { commandsDeque = &c; }
+
 protected:
-	static std::deque<iCommand*> *commandsDeque;
-	static iLogger* logger;
+	iLogger* logger = nullptr;
+	cCommandsDeque* commandsDeque = nullptr;
 
 	std::map<key, exceptionProcessor> exceptionActions;
-
 };
 
 class SOLIDAndExceptions
@@ -120,13 +138,17 @@ class SOLIDAndExceptions
 public:
     void run();
 
-	void push_back(iCommand* command)
+	void push_back(std::unique_ptr<iCommand> &command)
 	{
 		commands.push_back(command);
 	}
 
+	cCommandsDeque& getCommandsDeque() { return commands; }
+
+	void set(cExceptionsHandler* h) { handler = h;  };
+
 protected:
-	cExceptionsHandler handler;
+	cExceptionsHandler *handler = nullptr;
 	cCommandsDeque commands;
 
 };

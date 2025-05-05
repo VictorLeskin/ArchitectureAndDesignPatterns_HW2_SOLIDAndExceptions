@@ -3,9 +3,6 @@
 #include "SOLIDAndExceptions.hpp"
 #include <cassert>
 
-std::deque<iCommand*>* cExceptionsHandler::commandsDeque;
-iLogger* cExceptionsHandler::logger;
-
 void SOLIDAndExceptions::run()
 {
     bool stop = false;
@@ -13,15 +10,15 @@ void SOLIDAndExceptions::run()
     {
         if (true == commands.empty())
             break;
-        iCommand &cmd = commands.pop_front();
-
+        std::unique_ptr< iCommand> cmd = commands.pop_front();
         try 
         {
-            cmd.Execute();
+            cmd->Execute();
         }
         catch (std::exception &e) 
         {
-            handler.Handle(cmd, e).Execute();
+            cExceptionsHandler::exceptionProcessor p = handler->Handle(cmd, e);
+            (*p)(*handler, cmd, e);
         }
     }
 }
@@ -37,24 +34,36 @@ class cEndOfUniverse : public iCommand
 };
 
 
-iCommand& cExceptionsHandler::Handle(iCommand& command, std::exception& e)
+cExceptionsHandler::exceptionProcessor cExceptionsHandler::Handle(std::unique_ptr< iCommand>& command, std::exception& e)
 {
-    static cEndOfUniverse endOfEverything;
-    return endOfEverything;
+    auto action = get(command->Type(), e.what());
+    if (action.has_value())
+        return *action;
+    throw(std::exception( "There is not action for this command and type" ));
 }
 
-void cExceptionsHandler::Register(const char* commandType, const char* exceptionType, void(*procesor)(iCommand&, std::exception&))
+void cExceptionsHandler::repeatTwiceAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr<iCommand>& command, std::exception& e)
+{
+    iCommand *p = command.get();
+    if( cRepeatCommand *p1 = dynamic_cast<cRepeatCommand *>(p); p1 != nullptr )
+    {
+        if( p1->ExecutionCount() == 1 )
+            repeatCommand(handler, command, e);
+        else if (p1->ExecutionCount() == 2)
+            addCommandWriteToLogger(handler, command, e);
+    }
+}
+
+void cExceptionsHandler::Register(const char* commandType, const char* exceptionType, exceptionProcessor procesor)
 {
     exceptionActions.insert(std::make_pair(std::tuple(commandType, exceptionType), procesor));
 }
 
 std::optional<cExceptionsHandler::exceptionProcessor> cExceptionsHandler::get(const char* commandType, const char* exceptionType)
 {
-    key k = std::tuple(commandType, exceptionType);
-    if (auto f = exceptionActions.find(k); exceptionActions.end() != f )
-    {
+    if (auto f = exceptionActions.find(std::tuple(commandType, exceptionType) ); 
+        exceptionActions.end() != f )
         return std::optional<exceptionProcessor>(f->second);
-    }
     else
         return std::optional<exceptionProcessor>();
 }
