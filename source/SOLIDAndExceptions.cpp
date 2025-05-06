@@ -19,9 +19,9 @@ void SOLIDAndExceptions::run()
         {
             handler->Handle(cmd, e)(*handler, cmd, e);
         }
-        catch (const std::exception& ex)
+        catch (const std::exception&)
         {
-          assert(nullptr=="Not processed operation");
+            assert(nullptr=="Not processed operation");
         }
     }
 }
@@ -36,24 +36,13 @@ cExceptionsHandler::exceptionProcessor cExceptionsHandler::Handle(std::unique_pt
     throw(std::exception( "There is not action for this command and type" ));
 }
 
-void cExceptionsHandler::repeatTwiceAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr<iCommand>& command, cException& e)
-{
-    iCommand *p = command.get();
-    if( cRepeatCommand *p1 = dynamic_cast<cRepeatCommand *>(p); p1 != nullptr )
-    {
-        if( p1->ExecutionCount() == 1 )
-            repeatCommand(handler, command, e);
-        else if (p1->ExecutionCount() == 2)
-            addCommandWriteToLogger(handler, command, e);
-    }
-}
 
 void cExceptionsHandler::Register(const char* commandType, const char* exceptionType, exceptionProcessor procesor)
 {
     exceptionActions.insert(std::make_pair(std::tuple(commandType, exceptionType), procesor));
 }
 
-std::optional<cExceptionsHandler::exceptionProcessor> cExceptionsHandler::get(const char* commandType, const char* exceptionType)
+std::optional<cExceptionsHandler::exceptionProcessor> cExceptionsHandler::get(const char* commandType, const char* exceptionType) const
 {
     if (auto f = exceptionActions.find(std::tuple(commandType, exceptionType) ); 
         exceptionActions.end() != f )

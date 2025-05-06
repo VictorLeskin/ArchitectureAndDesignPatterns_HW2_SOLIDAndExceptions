@@ -1,4 +1,3 @@
-///************************* ITELMA SP ****************************************
 #ifndef SOLIDANDEXCEPTIONS_HPP
 #define SOLIDANDEXCEPTIONS_HPP
 
@@ -9,7 +8,8 @@
 #include <cassert>
 #include <map>
 
-class iCommand // interface class of command
+// interface class of command
+class iCommand
 {
 public:
 	virtual ~iCommand() = default;
@@ -18,13 +18,15 @@ public:
 	virtual const char* Type() = 0;
 };
 
+// A class of the deque of commands. It is just a wrapper of std::deque with pointers to commands.
+// std::unique_ptr  helps us avoid problems with a memory allocation/freeing.
 class cCommandsDeque
 {
 public:
 	cCommandsDeque() {}
 
 	bool empty() const { return commands.empty(); }
-	std::unique_ptr< iCommand> pop_front()
+	std::unique_ptr< iCommand> pop_front() 
 	{
 		std::unique_ptr< iCommand> ret = std::move(commands.front());
 		commands.pop_front();
@@ -39,6 +41,7 @@ protected:
 	std::deque< std::unique_ptr<iCommand> > commands;
 };
 
+// base class of exception used in task. It has name.
 class cException : public std::exception
 {
 public:
@@ -50,8 +53,8 @@ protected:
   const char* szWhat;
 };
 
-
-class iLogger // interface class of logger
+// interface class of logger
+class iLogger 
 {
 public:
 	virtual void WriteEvent(iCommand& command, cException& exc) = 0;
@@ -59,7 +62,9 @@ public:
 
 
 
-// commands 
+// commands
+
+// command to write to logger 
 class cCommandWriteToLogger : public iCommand
 {
 public:
@@ -75,6 +80,7 @@ protected:
 	cException exc;
 };
 
+// command to repeat command
 class cRepeatCommand : public iCommand // interface class of command
 {
 public:
@@ -84,23 +90,18 @@ public:
 	{
 	}
 
-	virtual void Execute() { ++executionCount; command->Execute(); }
+	virtual void Execute() { command->Execute(); }
 	virtual const char* Type() { return name.c_str(); };
-	int ExecutionCount() const { return executionCount; }
 
 protected:		
-	int executionCount = 0;
 	std::unique_ptr<iCommand> command;
 	std::string name;
-
 };
 
 class cExceptionsHandler
 {
 public:
 	using exceptionProcessor = void (*)(cExceptionsHandler&, std::unique_ptr< iCommand>&, cException&);
-
-protected:
 	using key = std::tuple<std::string,std::string>; // command, exception
 
 public:
@@ -108,10 +109,11 @@ public:
 	
 	cExceptionsHandler::exceptionProcessor Handle(std::unique_ptr< iCommand>& command, cException& e);
 
-	static void writeToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException &e)
-	{
-		handler.logger->WriteEvent(*command, e);
-	}
+  void Register(const char* commandType, const char* exceptionType, exceptionProcessor procesor);
+  std::optional< exceptionProcessor > get(const char* commandType, const char* exceptionType) const;
+
+  void setLogger(iLogger& l) { logger = &l; }
+  void setCommandsDeque(cCommandsDeque& c) { commandsDeque = &c; }
 
 	static void	addCommandWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException& e)
 	{
@@ -124,26 +126,10 @@ public:
 		std::unique_ptr<iCommand> r(new cRepeatCommand(command));
 		handler.commandsDeque->push_back(r);
 	}
-
-	static void	repeatAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException& e)
-	{
-		repeatCommand(handler, command, e);
-		addCommandWriteToLogger(handler, command, e);
-	}
-
-	static void	repeatTwiceAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException& e);
-
+	
 	static void	skipException(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException& e)
 	{
 	}
-
-
-
-	void Register(const char* commandType, const char* exceptionType, exceptionProcessor procesor);
-	std::optional< exceptionProcessor > get(const char* commandType, const char* exceptionType);
-
-	void setLogger(iLogger &l) { logger = &l; }
-	void setCommandsDeque(cCommandsDeque& c) { commandsDeque = &c; }
 
 protected:
 	iLogger* logger = nullptr;
@@ -155,8 +141,9 @@ protected:
 class SOLIDAndExceptions
 {
 public:
-    void run();
+  void run();
 
+	// interface 
 	void push_back(std::unique_ptr<iCommand> &command)
 	{
 		commands.push_back(command);
