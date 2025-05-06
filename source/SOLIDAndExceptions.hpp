@@ -44,7 +44,7 @@ class cException : public std::exception
 public:
   cException(const char* sz) : szWhat(sz) {}
 
-  const char* what() const override { return szWhat; }
+	const char* what() const noexcept { return szWhat; }
 
 protected:
   const char* szWhat;
