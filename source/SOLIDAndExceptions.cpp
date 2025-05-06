@@ -15,7 +15,7 @@ void SOLIDAndExceptions::run()
         {
             cmd->Execute();
         }
-        catch (std::exception &e) 
+        catch (cException &e) 
         {
             cExceptionsHandler::exceptionProcessor p = handler->Handle(cmd, e);
             (*p)(*handler, cmd, e);
@@ -34,15 +34,15 @@ class cEndOfUniverse : public iCommand
 };
 
 
-cExceptionsHandler::exceptionProcessor cExceptionsHandler::Handle(std::unique_ptr< iCommand>& command, std::exception& e)
+cExceptionsHandler::exceptionProcessor cExceptionsHandler::Handle(std::unique_ptr< iCommand>& command, cException& e)
 {
     auto action = get(command->Type(), e.what());
     if (action.has_value())
         return *action;
-    throw(std::exception( "There is not action for this command and type" ));
+    throw(cException( "There is not action for this command and type" ));
 }
 
-void cExceptionsHandler::repeatTwiceAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr<iCommand>& command, std::exception& e)
+void cExceptionsHandler::repeatTwiceAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr<iCommand>& command, cException& e)
 {
     iCommand *p = command.get();
     if( cRepeatCommand *p1 = dynamic_cast<cRepeatCommand *>(p); p1 != nullptr )

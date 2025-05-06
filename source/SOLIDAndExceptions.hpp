@@ -39,17 +39,31 @@ protected:
 	std::deque< std::unique_ptr<iCommand> > commands;
 };
 
+class cException : public std::exception
+{
+public:
+  cException(const char* sz) : szWhat(sz) {}
+
+  const char* what() const override { return szWhat; }
+
+protected:
+  const char* szWhat;
+};
+
+
 class iLogger // interface class of logger
 {
 public:
-	virtual void WriteEvent(iCommand& command, std::exception& exc) = 0;
+	virtual void WriteEvent(iCommand& command, cException& exc) = 0;
 };
+
+
 
 // commands 
 class cCommandWriteToLogger : public iCommand
 {
 public:
-	cCommandWriteToLogger(iLogger &l, std::unique_ptr< iCommand>& c, std::exception& e)
+	cCommandWriteToLogger(iLogger &l, std::unique_ptr< iCommand>& c, cException& e)
 		: logger(&l), command( std::move(c) ), exc(e) {}
 
 	virtual void Execute() { logger->WriteEvent( *command, exc ); }
@@ -58,7 +72,7 @@ public:
 protected:
 	iLogger* logger;
 	std::unique_ptr< iCommand> command;
-	std::exception exc;
+	cException exc;
 };
 
 class cRepeatCommand : public iCommand // interface class of command
@@ -66,7 +80,7 @@ class cRepeatCommand : public iCommand // interface class of command
 public:
 	cRepeatCommand(std::unique_ptr<iCommand>& c) 
 		: command(std::move(c))
-		, name( std::string("Repeator of ") + command->Type() )
+		, name( std::string("Repeater of ") + command->Type() )
 	{
 	}
 
@@ -84,7 +98,7 @@ protected:
 class cExceptionsHandler
 {
 public:
-	using exceptionProcessor = void (*)(cExceptionsHandler&, std::unique_ptr< iCommand>&, std::exception&);
+	using exceptionProcessor = void (*)(cExceptionsHandler&, std::unique_ptr< iCommand>&, cException&);
 
 protected:
 	using key = std::tuple<std::string,std::string>; // command, exception
@@ -92,34 +106,34 @@ protected:
 public:
 	cExceptionsHandler() {}
 	
-	cExceptionsHandler::exceptionProcessor Handle(std::unique_ptr< iCommand>& command, std::exception& e);
+	cExceptionsHandler::exceptionProcessor Handle(std::unique_ptr< iCommand>& command, cException& e);
 
-	static void writeToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception &e)
+	static void writeToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException &e)
 	{
 		handler.logger->WriteEvent(*command, e);
 	}
 
-	static void	addCommandWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e)
+	static void	addCommandWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException& e)
 	{
 		std::unique_ptr<iCommand> r(new cCommandWriteToLogger(*handler.logger, command, e));
 		handler.commandsDeque->push_back( r );
 	}
 
-	static void	repeatCommand(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e)
+	static void	repeatCommand(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException& e)
 	{
 		std::unique_ptr<iCommand> r(new cRepeatCommand(command));
 		handler.commandsDeque->push_back(r);
 	}
 
-	static void	repeatAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e)
+	static void	repeatAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException& e)
 	{
 		repeatCommand(handler, command, e);
 		addCommandWriteToLogger(handler, command, e);
 	}
 
-	static void	repeatTwiceAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e);
+	static void	repeatTwiceAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException& e);
 
-	static void	skipException(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e)
+	static void	skipException(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, cException& e)
 	{
 	}
 

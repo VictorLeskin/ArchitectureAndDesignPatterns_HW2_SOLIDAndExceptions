@@ -18,7 +18,7 @@ public:
         using iLogger::iLogger; // delegate constructors
         std::ostringstream strm;
 
-        void WriteEvent(iCommand& command, std::exception& exc) override
+        void WriteEvent(iCommand& command, cException& exc) override
         {
             strm << "Command: " 
                  << "'" << command.Type() << "'" 
@@ -58,7 +58,7 @@ public:
         // add here members for free access.
         using cExceptionsHandler::cExceptionsHandler; // delegate constructors
 
-        static void process(cExceptionsHandler &h, std::unique_ptr<iCommand>& command, std::exception& e)
+        static void process(cExceptionsHandler &h, std::unique_ptr<iCommand>& command, cException& e)
         {
         }
     };
@@ -71,7 +71,7 @@ public:
 
     virtual void Execute() override
     {
-        throw(std::exception("Execution throw this"));
+        throw(cException("Execution throw this"));
     }
 
     virtual const char* Type() override { return "cTestCommand1"; }
@@ -85,11 +85,11 @@ public:
     {
         ++executeCnt;
         if( executeCnt == 1 )
-            throw(std::exception("Execution throw this"));
+            throw(cException("Execution throw this"));
         else if (executeCnt == 2)
-            throw(std::exception("Second execution throw this"));
+            throw(cException("Second execution throw this"));
         else
-            throw(std::exception("Ups"));
+            throw(cException("Ups"));
     }
 
     virtual const char* Type() override { return "cTestCommandExecuteTwice"; }
@@ -162,7 +162,7 @@ TEST_F(test_SOLIDAndExceptions, test_runRepeatCommand)
     h.setCommandsDeque(t.getCommandsDeque());
 
     h.Register("cTestCommandExecuteTwice", "Execution throw this", cExceptionsHandler::repeatCommand);
-    h.Register("Repeator of cTestCommandExecuteTwice", "Second execution throw this", cExceptionsHandler::skipException);
+    h.Register("Repeater of cTestCommandExecuteTwice", "Second execution throw this", cExceptionsHandler::skipException);
 
     t.set(&h);
 
