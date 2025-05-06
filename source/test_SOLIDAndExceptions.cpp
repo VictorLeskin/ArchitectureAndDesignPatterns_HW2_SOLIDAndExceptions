@@ -71,11 +71,32 @@ public:
 
     virtual void Execute() override
     {
-        throw(std::exception("Execute of cTestCommand1 throw this"));
+        throw(std::exception("Execution throw this"));
     }
 
     virtual const char* Type() override { return "cTestCommand1"; }
 };
+
+
+class cTestCommandExecuteTwice : public iCommand
+{
+public:
+    virtual void Execute() override
+    {
+        ++executeCnt;
+        if( executeCnt == 1 )
+            throw(std::exception("Execution throw this"));
+        else if (executeCnt == 2)
+            throw(std::exception("Second execution throw this"));
+        else
+            throw(std::exception("Ups"));
+    }
+
+    virtual const char* Type() override { return "cTestCommandExecuteTwice"; }
+
+    int executeCnt = 0;
+};
+
 
 
 TEST_F(test_cExceptionsHandler, test_Register )
@@ -108,17 +129,6 @@ TEST_F(test_cExceptionsHandler, test_get)
     EXPECT_FALSE(t.get("command", "Exception"));
 }
 
-
- 
-TEST_F(test_SOLIDAndExceptions, test_run )
-{
-  Test_SOLIDAndExceptions t;
-
-  //t.handler.Register("Command", "Exception", Test_cExceptionsHandler::process);
-
-  //t.Register( "Logger", "Loggin failure", )
-}
-
 TEST_F(test_SOLIDAndExceptions, test_runCommandWriteToLogger)
 {
     Test_SOLIDAndExceptions t;
@@ -128,7 +138,7 @@ TEST_F(test_SOLIDAndExceptions, test_runCommandWriteToLogger)
     h.setLogger(t3);
     h.setCommandsDeque(t.getCommandsDeque());
 
-    h.Register("cTestCommand1", "Execute of cTestCommand1 throw this", cExceptionsHandler::addCommandWriteToLogger );
+    h.Register("cTestCommand1", "Execution throw this", cExceptionsHandler::addCommandWriteToLogger );
 
     t.set(&h);
    
@@ -138,7 +148,7 @@ TEST_F(test_SOLIDAndExceptions, test_runCommandWriteToLogger)
 
     t.run();
 
-    EXPECT_EQ("Command: 'cTestCommand1' Exception: 'Execute of cTestCommand1 throw this'\n", t3.strm.str());
+    EXPECT_EQ("Command: 'cTestCommand1' Exception: 'Execution throw this'\n", t3.strm.str());
 }
 
 TEST_F(test_SOLIDAndExceptions, test_runRepeatCommand)
@@ -150,17 +160,23 @@ TEST_F(test_SOLIDAndExceptions, test_runRepeatCommand)
     h.setLogger(t3);
     h.setCommandsDeque(t.getCommandsDeque());
 
-    h.Register("cTestCommand1", "Execute of cTestCommand1 throw this", cExceptionsHandler::repeatCommand);
+    h.Register("cTestCommandExecuteTwice", "Execution throw this", cExceptionsHandler::repeatCommand);
+    h.Register("Repeator of cTestCommandExecuteTwice", "Second execution throw this", cExceptionsHandler::skipException);
 
     t.set(&h);
 
-    std::unique_ptr<iCommand> t1(new cTestCommand1);
+    cTestCommandExecuteTwice* p = new cTestCommandExecuteTwice;
+    EXPECT_EQ(0, p->executeCnt);
 
+    std::unique_ptr<iCommand> t1(p);
+    
     t.push_back(t1);
+
+    const auto s0 = t3.strm.str();
 
     t.run();
 
-    EXPECT_EQ("Command: 'cTestCommand1' Exception: 'Execute of cTestCommand1 throw this'\n", t3.strm.str());
+    EXPECT_EQ(2, p->executeCnt );
 }
 
 

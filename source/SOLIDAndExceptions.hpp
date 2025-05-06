@@ -119,6 +119,11 @@ public:
 
 	static void	repeatTwiceAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e);
 
+	static void	skipException(cExceptionsHandler& handler, std::unique_ptr< iCommand>& command, std::exception& e)
+	{
+	}
+
+
 
 	void Register(const char* commandType, const char* exceptionType, exceptionProcessor procesor);
 	std::optional< exceptionProcessor > get(const char* commandType, const char* exceptionType);
