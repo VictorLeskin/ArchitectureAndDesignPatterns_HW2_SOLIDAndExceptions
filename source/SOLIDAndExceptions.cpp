@@ -33,7 +33,7 @@ cExceptionsHandler::exceptionProcessor cExceptionsHandler::Handle(std::unique_pt
     if (action.has_value())
         return *action;
 
-    throw(std::exception( "There is not action for this command and type" ));
+    throw(cException( "There is not action for this command and type" ));
 }
 
 
