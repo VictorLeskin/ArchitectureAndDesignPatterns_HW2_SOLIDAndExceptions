@@ -216,7 +216,6 @@ TEST_F(test_SOLIDAndExceptions, test_runRepeatCommand)
   EXPECT_EQ(2, cTestCommandRepeat::executeCnt);
 }
 
-
 TEST_F(test_SOLIDAndExceptions, test_runRepeatAndWriteToLogger)
 {
     Test_SOLIDAndExceptions t;
