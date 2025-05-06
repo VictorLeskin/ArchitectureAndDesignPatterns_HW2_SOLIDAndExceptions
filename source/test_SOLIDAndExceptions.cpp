@@ -94,9 +94,10 @@ public:
 
     virtual const char* Type() override { return "cTestCommandExecuteTwice"; }
 
-    int executeCnt = 0;
+    static int executeCnt;
 };
 
+int cTestCommandExecuteTwice::executeCnt;
 
 
 TEST_F(test_cExceptionsHandler, test_Register )
