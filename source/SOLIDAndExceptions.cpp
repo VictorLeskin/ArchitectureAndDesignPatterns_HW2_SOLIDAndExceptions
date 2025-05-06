@@ -17,21 +17,14 @@ void SOLIDAndExceptions::run()
         }
         catch (cException &e) 
         {
-            cExceptionsHandler::exceptionProcessor p = handler->Handle(cmd, e);
-            (*p)(*handler, cmd, e);
+            handler->Handle(cmd, e)(*handler, cmd, e);
+        }
+        catch (const std::exception& ex)
+        {
+          assert(nullptr=="Not processed operation");
         }
     }
 }
-
-
-class cEndOfUniverse : public iCommand
-{
-    virtual void Execute() override
-    {
-        assert(false);
-    }
-    virtual const char* Type() { return "End of Universe"; }
-};
 
 
 cExceptionsHandler::exceptionProcessor cExceptionsHandler::Handle(std::unique_ptr< iCommand>& command, cException& e)
@@ -39,7 +32,8 @@ cExceptionsHandler::exceptionProcessor cExceptionsHandler::Handle(std::unique_pt
     auto action = get(command->Type(), e.what());
     if (action.has_value())
         return *action;
-    throw(cException( "There is not action for this command and type" ));
+
+    throw(std::exception( "There is not action for this command and type" ));
 }
 
 void cExceptionsHandler::repeatTwiceAndWriteToLogger(cExceptionsHandler& handler, std::unique_ptr<iCommand>& command, cException& e)
